@@ -163,7 +163,7 @@ fun AddInseminationScreen(
             ) {
                 Text("ℹ️", fontSize = 18.sp, modifier = Modifier.padding(end = 10.dp, top = 2.dp))
                 Text(
-                    "Tohumlama başarılı olarak işaretlendiğinde, 285 gün sonra kuruya çıkma bildirimi gönderilecek.",
+                    "Tohumlama başarılı olarak işaretlendiğinde, 195 gün sonra kuruya çıkma bildirimi gönderilecek.",
                     color = TextMid, fontSize = 12.sp, lineHeight = 18.sp
                 )
             }

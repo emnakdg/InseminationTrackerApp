@@ -62,7 +62,7 @@ fun addDays(date: Date, days: Int): Date = Date(date.time + days.toLong() * 24 *
 fun CowData.latestStatus(): String? = inseminationRecords.firstOrNull()?.status
 
 fun scheduleDryOffNotification(context: Context, earTag: String, inseminationDate: Date) {
-    val dryOffDate = addDays(inseminationDate, 285)
+    val dryOffDate = addDays(inseminationDate, 195)
     val delayMs = dryOffDate.time - System.currentTimeMillis()
     if (delayMs <= 0) return
     val request = OneTimeWorkRequestBuilder<CowBirthReminderWorker>()

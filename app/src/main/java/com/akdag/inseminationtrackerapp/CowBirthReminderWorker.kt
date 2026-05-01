@@ -19,7 +19,7 @@ class CowBirthReminderWorker(appContext: Context, workerParams: WorkerParameters
         val earTag = inputData.getString("earTag") ?: return Result.failure()
         showNotification(
             title = "Kuruya Çıkma Zamanı!",
-            message = "Küpe #$earTag — Tohumlamadan 285 gün geçti, kuruya çıkarma zamanı geldi."
+            message = "Küpe #$earTag — Tohumlamadan 195 gün geçti, kuruya çıkarma zamanı geldi."
         )
         return Result.success()
     }

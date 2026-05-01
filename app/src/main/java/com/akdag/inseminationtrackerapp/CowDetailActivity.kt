@@ -111,7 +111,7 @@ fun CowDetailScreen(
                 if (isNowPregnant) {
                     val insDate = (records[0]["date"] as? com.google.firebase.Timestamp)?.toDate()
                     if (insDate != null) {
-                        val dryOffDate = addDays(insDate, 285)
+                        val dryOffDate = addDays(insDate, 195)
                         updates["drying_off_date"] = com.google.firebase.Timestamp(dryOffDate)
                     }
                 } else {
