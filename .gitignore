@@ -61,3 +61,7 @@ Thumbs.db
 
 # Git metadata
 .git/
+
+# Tasarım prototipleri ve belgeler
+Design/
+PROJECT_BRIEF.md

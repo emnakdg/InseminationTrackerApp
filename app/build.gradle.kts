@@ -52,15 +52,12 @@ android {
 
 dependencies {
 
-    implementation("com.google.firebase:firebase-bom:31.2.3")
-    implementation("com.google.mlkit:text-recognition:16.0.0")
-    implementation("androidx.compose.material:material-icons-extended:1.0.5")
-    implementation("com.google.firebase:firebase-messaging:23.0.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("com.google.firebase:firebase-firestore-ktx")
     implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("androidx.work:work-runtime-ktx:2.7.1")
-    implementation(platform("com.google.firebase:firebase-bom:33.3.0"))
     implementation("com.google.firebase:firebase-analytics")
+    implementation("com.google.firebase:firebase-messaging-ktx")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

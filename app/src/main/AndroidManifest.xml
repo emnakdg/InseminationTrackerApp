@@ -2,14 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-
-    <uses-feature
-        android:name="android.hardware.camera"
-        android:required="false" />
-
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"
@@ -21,9 +16,12 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Inseminationtrackerapp"
         tools:targetApi="31">
-        <service android:name="androidx.work.impl.background.systemjob.SystemJobService"
+
+        <service
+            android:name="androidx.work.impl.background.systemjob.SystemJobService"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="true" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -31,15 +29,15 @@
             android:theme="@style/Theme.Inseminationtrackerapp">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <activity android:name=".CowDataActivity" />
-        <activity android:name=".RegisterActivity" />
         <activity android:name=".HomeActivity" />
-        <activity android:name=".VaccineActivity" />
+        <activity android:name=".CowDetailActivity" />
+        <activity android:name=".AddCowActivity" />
+        <activity android:name=".AddInseminationActivity" />
+        <activity android:name=".AddVaccineActivity" />
 
     </application>
 
