@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +15,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -100,8 +104,15 @@ fun CowDetailScreen(
                 val records = (doc.get("insemination_records") as? List<Map<String, Any>> ?: emptyList()).toMutableList()
                 if (records.isEmpty()) { actionLoading = false; return@addOnSuccessListener }
 
-                val updated = records[0].toMutableMap().apply { put("status", newStatus) }
-                records[0] = updated
+                val targetIdx = when (newStatus) {
+                    "Başarılı", "Başarısız" -> records.indexOfFirst { it["status"] == "Tohumlama Yapıldı" }
+                    "Doğum Yaptı", "Düşük Yaptı" -> records.indexOfFirst { it["status"] == "Başarılı" }
+                    else -> 0
+                }
+                if (targetIdx < 0) { actionLoading = false; return@addOnSuccessListener }
+
+                val updated = records[targetIdx].toMutableMap().apply { put("status", newStatus) }
+                records[targetIdx] = updated
 
                 val isNowPregnant = newStatus == "Başarılı"
                 val updates = mutableMapOf<String, Any>(
@@ -109,7 +120,7 @@ fun CowDetailScreen(
                     "is_pregnant" to isNowPregnant
                 )
                 if (isNowPregnant) {
-                    val insDate = (records[0]["date"] as? com.google.firebase.Timestamp)?.toDate()
+                    val insDate = (records[targetIdx]["date"] as? com.google.firebase.Timestamp)?.toDate()
                     if (insDate != null) {
                         val dryOffDate = addDays(insDate, 195)
                         updates["drying_off_date"] = com.google.firebase.Timestamp(dryOffDate)
@@ -121,13 +132,12 @@ fun CowDetailScreen(
                 db.collection("Cows").document(cowId).update(updates)
                     .addOnSuccessListener {
                         if (isNowPregnant) {
-                            val insDate = (records[0]["date"] as? com.google.firebase.Timestamp)?.toDate()
+                            val insDate = (records[targetIdx]["date"] as? com.google.firebase.Timestamp)?.toDate()
                             if (insDate != null) {
                                 scheduleDryOffNotification(context, currentCow.earTag, insDate)
                             }
                         }
                         actionLoading = false
-                        // reload
                         db.collection("Cows").document(cowId).get()
                             .addOnSuccessListener { d -> cow = if (d.exists()) d.toCowData() else null }
                     }
@@ -138,6 +148,18 @@ fun CowDetailScreen(
     fun deleteCow() {
         db.collection("Cows").document(cowId).delete()
             .addOnSuccessListener { onDeleted() }
+    }
+
+    fun confirmDryOff() {
+        actionLoading = true
+        db.collection("Cows").document(cowId)
+            .update("drying_off_date", FieldValue.delete())
+            .addOnSuccessListener {
+                actionLoading = false
+                db.collection("Cows").document(cowId).get()
+                    .addOnSuccessListener { d -> cow = if (d.exists()) d.toCowData() else null }
+            }
+            .addOnFailureListener { actionLoading = false }
     }
 
     if (loading) {
@@ -171,7 +193,14 @@ fun CowDetailScreen(
                             .background(StatusBasarisizBg, RoundedCornerShape(10.dp))
                             .clickable { showDeleteConfirm = true },
                         contentAlignment = Alignment.Center
-                    ) { Text("🗑", fontSize = 16.sp) }
+                    ) {
+                        Icon(
+                            Icons.Rounded.Delete,
+                            contentDescription = "Sil",
+                            tint = RedAccent,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
             )
 
@@ -218,9 +247,37 @@ fun CowDetailScreen(
                                     Text(formatDate(currentCow.dryingOffDate?.toDate()), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("KALAN", fontSize = 11.sp, color = TextMid)
-                                    Text("${days}g", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
+                                    Text(if (days < 0) "GECİKTİ" else "KALAN", fontSize = 11.sp, color = TextMid)
+                                    Text("${if (days < 0) -days else days}g", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold,
                                         color = if (days <= 14) RedAccent else GreenPrimary)
+                                }
+                            }
+                            if (days <= 0) {
+                                Spacer(Modifier.height(10.dp))
+                                Row(
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .background(StatusGebeBg, RoundedCornerShape(14.dp))
+                                        .border(1.dp, GreenPrimary.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(Modifier.weight(1f)) {
+                                        Text("Kuruya çıkarma zamanı!", fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 13.sp)
+                                        Text(
+                                            if (days == 0) "Bugün kuruya çıkarılması gerekiyor."
+                                            else "${-days} gün önce kuruya çıkarılması gerekiyordu.",
+                                            color = TextMid, fontSize = 12.sp,
+                                            modifier = Modifier.padding(top = 2.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(12.dp))
+                                    Button(
+                                        onClick = { confirmDryOff() },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary, contentColor = Bg0),
+                                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                                    ) { Text("✓ Onaylandı", fontSize = 13.sp, fontWeight = FontWeight.SemiBold) }
                                 }
                             }
                         }
@@ -362,7 +419,11 @@ fun CowDetailScreen(
         }
 
         // Delete confirmation
-        if (showDeleteConfirm) {
+        AnimatedVisibility(
+            visible = showDeleteConfirm,
+            enter = fadeIn(tween(200)) + slideInVertically(tween(250)) { it / 4 },
+            exit  = fadeOut(tween(180)) + slideOutVertically(tween(200)) { it / 4 }
+        ) {
             Dialog(onDismissRequest = { showDeleteConfirm = false }) {
                 Column(
                     Modifier

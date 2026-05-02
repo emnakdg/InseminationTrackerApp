@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The com_google_android_gms_fonts_certs resource is provided automatically
+  by the androidx.compose.ui:ui-text-google-fonts library after Gradle sync.
+  No manual certificate definitions are needed here.
+-->
+<resources />

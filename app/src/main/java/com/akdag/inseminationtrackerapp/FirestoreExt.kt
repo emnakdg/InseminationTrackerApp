@@ -59,18 +59,21 @@ fun daysUntil(date: Date): Int {
 
 fun addDays(date: Date, days: Int): Date = Date(date.time + days.toLong() * 24 * 60 * 60 * 1000)
 
-fun CowData.latestStatus(): String? = inseminationRecords.firstOrNull()?.status
+fun CowData.latestStatus(): String? {
+    if (isPregnant) return "Başarılı"
+    val pending = inseminationRecords.find { it.status == "Tohumlama Yapıldı" }
+    if (pending != null) return "Tohumlama Yapıldı"
+    return inseminationRecords.firstOrNull()?.status
+}
 
 fun scheduleDryOffNotification(context: Context, earTag: String, inseminationDate: Date) {
     val dryOffDate = addDays(inseminationDate, 195)
     val delayMs = dryOffDate.time - System.currentTimeMillis()
-    if (delayMs <= 0) return
-    val request = OneTimeWorkRequestBuilder<CowBirthReminderWorker>()
-        .setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
+    val builder = OneTimeWorkRequestBuilder<CowBirthReminderWorker>()
         .setInputData(workDataOf("earTag" to earTag))
         .addTag("reminder_$earTag")
-        .build()
+    if (delayMs > 0) builder.setInitialDelay(delayMs, TimeUnit.MILLISECONDS)
     WorkManager.getInstance(context).enqueueUniqueWork(
-        "drying_off_$earTag", ExistingWorkPolicy.REPLACE, request
+        "drying_off_$earTag", ExistingWorkPolicy.REPLACE, builder.build()
     )
 }

@@ -57,7 +57,7 @@ fun AddCowScreen(onBack: () -> Unit, onSaved: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             FormTextField(
-                label = "İSİM",
+                label = "İSİM (OPSİYONEL)",
                 value = name,
                 onValueChange = { name = it },
                 placeholder = "Sarı, Karabaş, Beyaz…"
@@ -88,7 +88,6 @@ fun AddCowScreen(onBack: () -> Unit, onSaved: () -> Unit) {
                     text = if (loading) "Kaydediliyor…" else "Kaydet",
                     enabled = !loading,
                     onClick = {
-                        if (name.isBlank()) { error = "İsim gereklidir."; return@PrimaryButton }
                         if (earTag.isBlank()) { error = "Küpe numarası gereklidir."; return@PrimaryButton }
                         loading = true; error = ""
 

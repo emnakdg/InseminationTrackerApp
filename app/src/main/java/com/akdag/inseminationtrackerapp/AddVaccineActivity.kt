@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -53,9 +55,16 @@ fun AddVaccineScreen(
     val uid = auth.currentUser?.uid ?: ""
     val context = LocalContext.current
 
-    val commonVaccines = listOf("Şap", "BVD", "IBR", "Brucella", "Leptospirozis", "Tetanoz")
-    val row1 = commonVaccines.take(3)
-    val row2 = commonVaccines.drop(3)
+    val commonVaccines = listOf(
+        // Viral
+        "Şap", "BVD", "IBR", "PI3", "BRSV", "LSD (Nodüler)",
+        "Rotavirus", "Coronavirus",
+        // Bakteriyel
+        "Brucella", "Leptospirozis", "Tetanoz", "Pastöröl",
+        "Şarbon", "Kara Şarbon", "Salmonella", "Kolibakilloz", "Clostridial",
+        // Paraziter
+        "Theileria", "Anaplazmosis"
+    )
 
     var allCows by remember { mutableStateOf<List<CowData>>(emptyList()) }
     var selectedCowId by remember { mutableStateOf(preselectedCowId ?: "") }
@@ -88,13 +97,30 @@ fun AddVaccineScreen(
     @Composable
     fun VaccineChip(label: String) {
         val selected = vaccineName == label
-        Box(
+        Row(
             Modifier
                 .background(if (selected) GreenPrimary else Bg3, RoundedCornerShape(20.dp))
                 .border(1.dp, if (selected) GreenPrimary else BorderColor, RoundedCornerShape(20.dp))
-                .clickable { vaccineName = label }
-                .padding(horizontal = 14.dp, vertical = 7.dp)
-        ) { Text(label, fontSize = 13.sp, color = if (selected) Bg0 else TextMid, fontWeight = FontWeight.SemiBold) }
+                .clickable { vaccineName = if (selected) "" else label }
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (selected) {
+                Icon(
+                    Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = Bg0,
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+            Text(
+                label,
+                fontSize = 12.sp,
+                color = if (selected) Bg0 else TextMid,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
+            )
+        }
     }
 
     Column(Modifier.fillMaxSize().background(Bg0)) {
@@ -164,11 +190,13 @@ fun AddVaccineScreen(
             Column {
                 Text("AŞI ADI", color = TextMid, fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
                     letterSpacing = 0.5.sp, modifier = Modifier.padding(bottom = 8.dp))
-                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row1.forEach { v -> VaccineChip(v) }
-                }
-                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row2.forEach { v -> VaccineChip(v) }
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    commonVaccines.forEach { v -> VaccineChip(v) }
                 }
                 FormTextField(
                     label = "",

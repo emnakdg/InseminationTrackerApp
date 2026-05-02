@@ -19,12 +19,13 @@ class CowBirthReminderWorker(appContext: Context, workerParams: WorkerParameters
         val earTag = inputData.getString("earTag") ?: return Result.failure()
         showNotification(
             title = "Kuruya Çıkma Zamanı!",
-            message = "Küpe #$earTag — Tohumlamadan 195 gün geçti, kuruya çıkarma zamanı geldi."
+            message = "Küpe #$earTag — Tohumlamadan 195 gün geçti, kuruya çıkarma zamanı geldi.",
+            notificationId = earTag.hashCode()
         )
         return Result.success()
     }
 
-    private fun showNotification(title: String, message: String) {
+    private fun showNotification(title: String, message: String, notificationId: Int = 0) {
         if (ContextCompat.checkSelfPermission(applicationContext, Manifest.permission.POST_NOTIFICATIONS)
             != PackageManager.PERMISSION_GRANTED) return
 
@@ -46,6 +47,6 @@ class CowBirthReminderWorker(appContext: Context, workerParams: WorkerParameters
             .setAutoCancel(true)
             .build()
 
-        NotificationManagerCompat.from(applicationContext).notify(earTag.hashCode(), notification)
+        NotificationManagerCompat.from(applicationContext).notify(notificationId, notification)
     }
 }

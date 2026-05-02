@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="112" fill="#102010"/>
+
+  <!-- Ears — horizontal, cow-like -->
+  <ellipse cx="85" cy="247" rx="48" ry="34" fill="#F5F5F5"/>
+  <ellipse cx="85" cy="247" rx="29" ry="19" fill="#F0B8B8" fill-opacity="0.75"/>
+
+  <ellipse cx="427" cy="247" rx="48" ry="34" fill="#F5F5F5"/>
+  <ellipse cx="427" cy="247" rx="29" ry="19" fill="#F0B8B8" fill-opacity="0.75"/>
+
+  <!-- Horns -->
+  <rect x="187" y="112" width="34" height="72" rx="17" fill="#F5F5F5"
+        transform="rotate(-18 204 148)"/>
+  <rect x="291" y="112" width="34" height="72" rx="17" fill="#F5F5F5"
+        transform="rotate(18 308 148)"/>
+
+  <!-- Head -->
+  <ellipse cx="256" cy="275" rx="154" ry="144" fill="#F5F5F5"/>
+
+  <!-- Holstein black patch (left eye area) -->
+  <ellipse cx="196" cy="220" rx="58" ry="53" fill="#1A2E1A"/>
+
+  <!-- Left eye — white on dark patch -->
+  <ellipse cx="196" cy="238" rx="24" ry="24" fill="#FFFFFF"/>
+  <ellipse cx="196" cy="238" rx="12" ry="12" fill="#1A2E1A"/>
+  <ellipse cx="202" cy="231" rx="5" ry="5" fill="#FFFFFF"/>
+
+  <!-- Right eye — dark on white -->
+  <ellipse cx="326" cy="238" rx="24" ry="24" fill="#1A2E1A"/>
+  <ellipse cx="334" cy="231" rx="5" ry="5" fill="#FFFFFF"/>
+
+  <!-- Large pink muzzle — most important cow feature -->
+  <ellipse cx="256" cy="352" rx="88" ry="58" fill="#F5C0B0"/>
+
+  <!-- Nostrils -->
+  <ellipse cx="218" cy="362" rx="17" ry="17" fill="#1A2E1A"/>
+  <ellipse cx="294" cy="362" rx="17" ry="17" fill="#1A2E1A"/>
+</svg>

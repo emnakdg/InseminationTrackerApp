@@ -1,11 +1,17 @@
 package com.akdag.inseminationtrackerapp
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,11 +25,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.List
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +59,10 @@ class HomeActivity : ComponentActivity() {
         refreshState.value++
     }
 
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { /* bildirim izni verildi/reddedildi, devam et */ }
+
     override fun onResume() {
         super.onResume()
         refreshState.value++
@@ -57,6 +70,12 @@ class HomeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
         setContent {
             InseminationTrackerTheme {
                 MainAppContent(
@@ -258,10 +277,10 @@ fun DashboardTab(
                     modifier = Modifier.padding(bottom = 10.dp)
                 )
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    QuickAccessCard("Tohumlama\nEkle", "➕", Modifier.weight(1f)) { onAddInsemination() }
-                    QuickAccessCard("Aşı\nEkle", "💉", Modifier.weight(1f)) { onAddVaccine() }
-                    QuickAccessCard("İnek\nListesi", "📋", Modifier.weight(1f)) { onTabChange(1) }
-                    QuickAccessCard("Uyarılar", "🔔", Modifier.weight(1f)) { onTabChange(2) }
+                    QuickAccessCard("Tohumlama\nEkle", Icons.Rounded.Add, Modifier.weight(1f), GreenPrimary) { onAddInsemination() }
+                    QuickAccessCard("Aşı Ekle", Icons.Rounded.Vaccines, Modifier.weight(1f), BlueAccent) { onAddVaccine() }
+                    QuickAccessCard("İnek\nListesi", Icons.Rounded.FormatListBulleted, Modifier.weight(1f), GreenPrimary) { onTabChange(1) }
+                    QuickAccessCard("Uyarılar", Icons.Rounded.Notifications, Modifier.weight(1f), YellowAccent) { onTabChange(2) }
                 }
             }
         }
@@ -314,24 +333,47 @@ fun UpcomingDryOffCard(cow: CowData, days: Int, onClick: () -> Unit) {
                 fontSize = 12.sp, color = TextMid, modifier = Modifier.padding(top = 2.dp)
             )
         }
-        if (urgent) Text("⚠️", fontSize = 18.sp)
+        if (urgent) Icon(Icons.Rounded.Warning, contentDescription = null, tint = RedAccent, modifier = Modifier.size(20.dp))
     }
 }
 
 @Composable
-fun QuickAccessCard(label: String, icon: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
+fun QuickAccessCard(
+    label: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    iconTint: Color = GreenPrimary,
+    onClick: () -> Unit
+) {
     Column(
         modifier
             .background(CardColor, RoundedCornerShape(14.dp))
             .border(1.dp, BorderColor, RoundedCornerShape(14.dp))
             .clickable { onClick() }
-            .padding(vertical = 14.dp, horizontal = 8.dp),
+            .padding(vertical = 16.dp, horizontal = 6.dp)
+            .heightIn(min = 88.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.Center
     ) {
-        Text(icon, fontSize = 22.sp)
-        Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextMid, maxLines = 2,
-            overflow = TextOverflow.Ellipsis)
+        Box(
+            Modifier
+                .size(42.dp)
+                .background(iconTint.copy(alpha = 0.13f), RoundedCornerShape(12.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            label,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = TextMid,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            lineHeight = 15.sp
+        )
     }
 }
 
@@ -381,7 +423,7 @@ fun CowListTab(cows: List<CowData>, loading: Boolean, onCowDetail: (String) -> U
                             .background(GreenPrimary, RoundedCornerShape(10.dp))
                             .clickable { onAddCow() },
                         contentAlignment = Alignment.Center
-                    ) { Text("+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Bg0) }
+                    ) { Icon(Icons.Rounded.Add, contentDescription = "İnek Ekle", tint = Bg0, modifier = Modifier.size(20.dp)) }
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -390,7 +432,7 @@ fun CowListTab(cows: List<CowData>, loading: Boolean, onCowDetail: (String) -> U
                 value = search,
                 onValueChange = { search = it },
                 placeholder = { Text("Küpe no veya isim ara…", color = TextDim, fontSize = 14.sp) },
-                leadingIcon = { Text("🔍", modifier = Modifier.padding(start = 4.dp)) },
+                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, tint = TextDim, modifier = Modifier.size(20.dp)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
@@ -419,8 +461,14 @@ fun CowListTab(cows: List<CowData>, loading: Boolean, onCowDetail: (String) -> U
         HorizontalDivider(color = BorderColor)
 
         if (loading) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = GreenPrimary)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 88.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(6) { ShimmerCowCard(Modifier.fillMaxWidth()) }
             }
         } else if (filtered.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -453,30 +501,90 @@ fun CowCard(cow: CowData, onClick: () -> Unit) {
     val status = cow.latestStatus() ?: ""
     val days = cow.dryingOffDate?.let { daysUntil(it.toDate()) }
     val urgent = days != null && days in 0..14
+    val accentColor = when {
+        urgent       -> RedAccent
+        cow.isPregnant -> GreenPrimary
+        else         -> androidx.compose.ui.graphics.Color.Transparent
+    }
 
     Column(
         Modifier
-            .background(CardColor, RoundedCornerShape(16.dp))
-            .border(1.dp, if (urgent) RedAccent.copy(alpha = 0.35f) else BorderColor, RoundedCornerShape(16.dp))
+            .shadow(
+                elevation = if (urgent) 6.dp else 2.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = if (urgent) RedAccent.copy(0.25f) else GreenPrimary.copy(0.1f),
+                spotColor = androidx.compose.ui.graphics.Color.Transparent
+            )
+            .clip(RoundedCornerShape(16.dp))
+            .background(CardColor)
+            .border(1.dp, if (urgent) RedAccent.copy(alpha = 0.4f) else BorderColor, RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(14.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Box(
-                Modifier
-                    .size(40.dp)
-                    .background(if (cow.isPregnant) StatusGebeBg else Bg3, RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) { Text("🐄", fontSize = 20.sp) }
-            if (urgent) Text("⚠️", fontSize = 16.sp)
-        }
-        Spacer(Modifier.height(10.dp))
-        Text(cow.name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("#${cow.earTag}", fontSize = 11.sp, color = TextDim, modifier = Modifier.padding(bottom = 8.dp))
-        StatusBadge(status)
-        if (days != null && days >= 0) {
-            Spacer(Modifier.height(8.dp))
-            Text("⏱ $days gün kaldı", fontSize = 11.sp, color = if (urgent) RedAccent else TextMid)
+        // Üst aksan şeridi
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(3.dp)
+                .background(accentColor)
+        )
+
+        Column(Modifier.padding(12.dp)) {
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Box(
+                    Modifier
+                        .size(44.dp)
+                        .background(
+                            if (cow.isPregnant) StatusGebeBg else Bg3,
+                            RoundedCornerShape(13.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) { Text("🐄", fontSize = 22.sp) }
+                if (urgent) {
+                    Icon(Icons.Rounded.Warning, null, tint = RedAccent, modifier = Modifier.size(18.dp))
+                }
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                cow.name,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "#${cow.earTag}",
+                fontSize = 11.sp,
+                color = TextDim,
+                modifier = Modifier.padding(top = 1.dp, bottom = 8.dp)
+            )
+
+            StatusBadge(status)
+
+            if (days != null && days >= 0) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Rounded.Schedule,
+                        null,
+                        tint = if (urgent) RedAccent else TextMid,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(Modifier.width(3.dp))
+                    Text(
+                        "$days gün",
+                        fontSize = 11.sp,
+                        color = if (urgent) RedAccent else TextMid,
+                        fontWeight = if (urgent) FontWeight.SemiBold else FontWeight.Normal
+                    )
+                }
+            }
         }
     }
 }
@@ -510,7 +618,7 @@ fun CowListRow(cow: CowData, onClick: () -> Unit) {
             }
         }
         Spacer(Modifier.width(8.dp))
-        Text("›", color = TextDim, fontSize = 18.sp)
+        Icon(Icons.Rounded.ChevronRight, contentDescription = null, tint = TextDim, modifier = Modifier.size(20.dp))
     }
     HorizontalDivider(color = BorderColor, thickness = 0.5.dp, modifier = Modifier.padding(horizontal = 16.dp))
 }
@@ -595,12 +703,43 @@ fun NotificationsTab(cows: List<CowData>, onCowDetail: (String) -> Unit) {
 
 // ── PROFILE ───────────────────────────────────────────────────
 
+private const val PRIVACY_POLICY_URL = "https://chimerical-truffle-ace3bf.netlify.app/"
+
 @Composable
 fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Unit) {
     val totalVaccinations = cows.sumOf { it.vaccinations.size }
+    val context = LocalContext.current
+    var showAboutDialog by remember { mutableStateOf(false) }
+    var showDeleteAccountConfirm by remember { mutableStateOf(false) }
+    var deleteAccountLoading by remember { mutableStateOf(false) }
+    val auth = remember { FirebaseAuth.getInstance() }
+    val db = remember { FirebaseFirestore.getInstance() }
+    val uid = auth.currentUser?.uid ?: ""
+
+    fun deleteAccount() {
+        deleteAccountLoading = true
+        db.collection("Cows").whereEqualTo("user_id", uid).get()
+            .addOnSuccessListener { snap ->
+                val batch = db.batch()
+                snap.documents.forEach { batch.delete(it.reference) }
+                batch.commit().addOnSuccessListener {
+                    db.collection("Users").document(uid).delete().addOnSuccessListener {
+                        WorkManager.getInstance(context).cancelAllWork()
+                        auth.currentUser?.delete()
+                            ?.addOnSuccessListener { onLogout() }
+                            ?.addOnFailureListener {
+                                deleteAccountLoading = false
+                                // Oturum eskimiş — kullanıcı yeniden giriş yapmalı
+                                auth.signOut()
+                                onLogout()
+                            }
+                    }.addOnFailureListener { deleteAccountLoading = false }
+                }.addOnFailureListener { deleteAccountLoading = false }
+            }.addOnFailureListener { deleteAccountLoading = false }
+    }
 
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxWidth().background(Bg1).padding(horizontal = 20.dp, top = 20.dp, bottom = 24.dp)) {
+        Column(Modifier.fillMaxWidth().background(Bg1).padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 24.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier.size(60.dp).background(GreenPrimary, RoundedCornerShape(20.dp)),
@@ -640,26 +779,70 @@ fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Un
         HorizontalDivider(color = BorderColor)
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp)) {
-            items(
-                listOf(
-                    Triple("🔔", "Bildirim Ayarları", "Hatırlatma süreleri"),
-                    Triple("📱", "Uygulama Hakkında", "v2.0.0"),
-                )
-            ) { (icon, label, sub) ->
+            item {
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .background(CardColor, RoundedCornerShape(14.dp))
                         .border(1.dp, BorderColor, RoundedCornerShape(14.dp))
+                        .clickable {
+                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            context.startActivity(intent)
+                        }
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(icon, fontSize = 22.sp, modifier = Modifier.padding(end = 14.dp))
+                    Icon(Icons.Rounded.Notifications, null, tint = GreenPrimary, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text(label, fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp)
-                        Text(sub, fontSize = 12.sp, color = TextDim)
+                        Text("Bildirim Ayarları", fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp)
+                        Text("Hatırlatma süreleri", fontSize = 12.sp, color = TextDim)
                     }
-                    Text("›", color = TextDim, fontSize = 18.sp)
+                    Icon(Icons.Rounded.ChevronRight, null, tint = TextDim, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(CardColor, RoundedCornerShape(14.dp))
+                        .border(1.dp, BorderColor, RoundedCornerShape(14.dp))
+                        .clickable { showAboutDialog = true }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.PhoneAndroid, null, tint = GreenPrimary, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Uygulama Hakkında", fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp)
+                        Text("v2.0.0", fontSize = 12.sp, color = TextDim)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, null, tint = TextDim, modifier = Modifier.size(20.dp))
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
+            item {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(CardColor, RoundedCornerShape(14.dp))
+                        .border(1.dp, BorderColor, RoundedCornerShape(14.dp))
+                        .clickable {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_POLICY_URL)))
+                        }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Rounded.Lock, null, tint = GreenPrimary, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Gizlilik Politikası", fontWeight = FontWeight.SemiBold, color = TextPrimary, fontSize = 14.sp)
+                        Text("Verileriniz nasıl kullanılıyor?", fontSize = 12.sp, color = TextDim)
+                    }
+                    Icon(Icons.Rounded.ChevronRight, null, tint = TextDim, modifier = Modifier.size(20.dp))
                 }
                 Spacer(Modifier.height(8.dp))
             }
@@ -672,6 +855,98 @@ fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Un
                     shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = StatusBasarisizBg, contentColor = RedAccent)
                 ) { Text("Çıkış Yap", fontSize = 15.sp, fontWeight = FontWeight.SemiBold) }
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { showDeleteAccountConfirm = true },
+                    enabled = !deleteAccountLoading,
+                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(RedAccent.copy(alpha = 0.5f))
+                    ),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedAccent)
+                ) {
+                    Text(
+                        if (deleteAccountLoading) "Siliniyor…" else "Hesabı ve Tüm Verileri Sil",
+                        fontSize = 14.sp, fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDeleteAccountConfirm) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showDeleteAccountConfirm = false }) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Bg2, RoundedCornerShape(20.dp))
+                    .padding(24.dp)
+            ) {
+                Text("⚠️ Hesabı Sil", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = RedAccent)
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Bu işlem geri alınamaz. Aşağıdakiler kalıcı olarak silinecek:",
+                    fontSize = 14.sp, color = TextMid
+                )
+                Spacer(Modifier.height(8.dp))
+                listOf("Tüm inek kayıtları", "Tohumlama ve aşı geçmişi", "Hesap bilgileri").forEach {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 3.dp)) {
+                        Text("•", color = RedAccent, modifier = Modifier.padding(end = 8.dp))
+                        Text(it, fontSize = 13.sp, color = TextPrimary)
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedButton(
+                        onClick = { showDeleteAccountConfirm = false },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                    ) { Text("İptal") }
+                    Button(
+                        onClick = { showDeleteAccountConfirm = false; deleteAccount() },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = StatusBasarisizBg, contentColor = RedAccent)
+                    ) { Text("Sil") }
+                }
+            }
+        }
+    }
+
+    if (showAboutDialog) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { showAboutDialog = false }) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .background(Bg2, RoundedCornerShape(20.dp))
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .background(GreenPrimary, RoundedCornerShape(18.dp)),
+                    contentAlignment = Alignment.Center
+                ) { Text("🐄", fontSize = 30.sp) }
+                Spacer(Modifier.height(16.dp))
+                Text("İnek Takip", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                Text("v2.0.0", fontSize = 13.sp, color = TextDim, modifier = Modifier.padding(top = 4.dp))
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Sürü yönetimini kolaylaştırmak için tasarlandı. Tohumlama takibi, gebelik hatırlatmaları ve aşı kayıtları.",
+                    fontSize = 13.sp, color = TextMid,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    lineHeight = 20.sp
+                )
+                Spacer(Modifier.height(20.dp))
+                OutlinedButton(
+                    onClick = { showAboutDialog = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                ) { Text("Kapat") }
             }
         }
     }

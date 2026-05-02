@@ -18,16 +18,27 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.credentials.CredentialManager
+import androidx.credentials.CustomCredential
+import androidx.credentials.GetCredentialRequest
+import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import com.akdag.inseminationtrackerapp.ui.theme.*
+import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
+import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -90,6 +101,58 @@ private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister
     var passwordVisible by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val db = remember { FirebaseFirestore.getInstance() }
+
+    fun signInWithGoogle() {
+        loading = true; error = ""
+        val credentialManager = CredentialManager.create(context)
+        val googleSignInOption = GetSignInWithGoogleOption.Builder(
+            context.getString(R.string.default_web_client_id)
+        ).build()
+        val request = GetCredentialRequest.Builder()
+            .addCredentialOption(googleSignInOption)
+            .build()
+        scope.launch {
+            try {
+                val result = credentialManager.getCredential(context, request)
+                val credential = result.credential
+                if (credential is CustomCredential &&
+                    credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+                    val idToken = GoogleIdTokenCredential.createFrom(credential.data).idToken
+                    val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
+                    auth.signInWithCredential(firebaseCredential)
+                        .addOnSuccessListener { authResult ->
+                            val user = authResult.user ?: run { loading = false; onSuccess(); return@addOnSuccessListener }
+                            db.collection("Users").document(user.uid).get()
+                                .addOnSuccessListener { doc ->
+                                    if (!doc.exists()) {
+                                        db.collection("Users").document(user.uid).set(
+                                            mapOf(
+                                                "uid" to user.uid,
+                                                "name" to (user.displayName ?: ""),
+                                                "farm_name" to (user.displayName ?: ""),
+                                                "email" to (user.email ?: "")
+                                            )
+                                        ).addOnCompleteListener { loading = false; onSuccess() }
+                                    } else {
+                                        loading = false; onSuccess()
+                                    }
+                                }
+                                .addOnFailureListener { loading = false; onSuccess() }
+                        }
+                        .addOnFailureListener { loading = false; error = it.localizedMessage ?: "Giriş başarısız." }
+                } else {
+                    loading = false; error = "Google girişi başarısız."
+                }
+            } catch (e: GetCredentialCancellationException) {
+                loading = false
+            } catch (e: GetCredentialException) {
+                loading = false; error = e.message ?: e::class.simpleName ?: "Google girişi başarısız."
+            }
+        }
+    }
 
     Column(
         Modifier
@@ -142,6 +205,29 @@ private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister
             shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary, contentColor = Bg0)
         ) { Text(if (loading) "Giriş yapılıyor…" else "Giriş Yap", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+
+        Spacer(Modifier.height(20.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(Modifier.weight(1f), color = BorderColor)
+            Text("  veya  ", color = TextDim, fontSize = 12.sp)
+            HorizontalDivider(Modifier.weight(1f), color = BorderColor)
+        }
+        Spacer(Modifier.height(20.dp))
+
+        OutlinedButton(
+            onClick = { signInWithGoogle() },
+            enabled = !loading,
+            modifier = Modifier.fillMaxWidth().height(52.dp),
+            shape = RoundedCornerShape(14.dp),
+            border = ButtonDefaults.outlinedButtonBorder.copy(
+                brush = androidx.compose.ui.graphics.SolidColor(BorderColor)
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+        ) {
+            Text("G", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
+                color = GreenPrimary, modifier = Modifier.padding(end = 10.dp))
+            Text("Google ile Devam Et", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+        }
 
         Spacer(Modifier.height(24.dp))
         Row {
