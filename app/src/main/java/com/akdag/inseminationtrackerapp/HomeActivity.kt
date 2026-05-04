@@ -66,6 +66,7 @@ class HomeActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshState.value++
+        PremiumManager.querySubscriptionStatus()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -381,9 +382,11 @@ fun QuickAccessCard(
 
 @Composable
 fun CowListTab(cows: List<CowData>, loading: Boolean, onCowDetail: (String) -> Unit, onAddCow: () -> Unit) {
-    var search by remember { mutableStateOf("") }
-    var filter by remember { mutableStateOf("all") }
-    var viewMode by remember { mutableStateOf("card") }
+    val context   = LocalContext.current
+    val isPremium by PremiumManager.isPremium.collectAsState()
+    var search    by remember { mutableStateOf("") }
+    var filter    by remember { mutableStateOf("all") }
+    var viewMode  by remember { mutableStateOf("card") }
 
     val filtered = cows.filter { cow ->
         val matchSearch = cow.earTag.contains(search, ignoreCase = true) || cow.name.contains(search, ignoreCase = true)
@@ -400,7 +403,19 @@ fun CowListTab(cows: List<CowData>, loading: Boolean, onCowDetail: (String) -> U
         // Header
         Column(Modifier.fillMaxWidth().background(Bg1).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 10.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("İnekler", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                Column {
+                    Text("İnekler", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                    if (!isPremium) {
+                        val usedColor = if (cows.size >= PremiumManager.FREE_COW_LIMIT) RedAccent else TextDim
+                        Text(
+                            "${cows.size} / ${PremiumManager.FREE_COW_LIMIT} inek",
+                            fontSize = 11.sp, color = usedColor,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    } else {
+                        Text("⭐ Premium", fontSize = 11.sp, color = PremiumGold, fontWeight = FontWeight.SemiBold)
+                    }
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     // View toggle
                     Row(
@@ -708,7 +723,8 @@ private const val PRIVACY_POLICY_URL = "https://chimerical-truffle-ace3bf.netlif
 @Composable
 fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Unit) {
     val totalVaccinations = cows.sumOf { it.vaccinations.size }
-    val context = LocalContext.current
+    val context   = LocalContext.current
+    val isPremium by PremiumManager.isPremium.collectAsState()
     var showAboutDialog by remember { mutableStateOf(false) }
     var showDeleteAccountConfirm by remember { mutableStateOf(false) }
     var deleteAccountLoading by remember { mutableStateOf(false) }
@@ -779,6 +795,70 @@ fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Un
         HorizontalDivider(color = BorderColor)
 
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp)) {
+
+            // Premium kartı
+            item {
+                if (isPremium) {
+                    Column(
+                        Modifier.fillMaxWidth()
+                            .background(PremiumGoldDim.copy(alpha = 0.25f), RoundedCornerShape(14.dp))
+                            .border(1.dp, PremiumGold.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                            .padding(16.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("👑", fontSize = 24.sp)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text("Premium Üye", fontWeight = FontWeight.Bold, color = PremiumGold, fontSize = 15.sp)
+                                Text("Tüm özellikler aktif", fontSize = 12.sp, color = TextDim)
+                            }
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = {
+                                val uri = android.net.Uri.parse(
+                                    "https://play.google.com/store/account/subscriptions" +
+                                    "?package=com.akdag.inseminationtrackerapp"
+                                )
+                                context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            },
+                            modifier = Modifier.fillMaxWidth().height(38.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            border = ButtonDefaults.outlinedButtonBorder.copy(
+                                brush = androidx.compose.ui.graphics.SolidColor(PremiumGold.copy(alpha = 0.5f))
+                            ),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = PremiumGold),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Aboneliği Yönet / İptal Et", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth()
+                            .background(CardColor, RoundedCornerShape(14.dp))
+                            .border(1.dp, BorderColor, RoundedCornerShape(14.dp))
+                            .clickable { context.startActivity(Intent(context, PremiumActivity::class.java)) }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("🔓", fontSize = 22.sp)
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text("Ücretsiz Plan", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
+                            Text("${cows.size} / ${PremiumManager.FREE_COW_LIMIT} inek kullanıldı", fontSize = 12.sp, color = TextDim)
+                        }
+                        Box(
+                            Modifier.background(PremiumGold, RoundedCornerShape(10.dp))
+                                .padding(horizontal = 12.dp, vertical = 6.dp)
+                        ) {
+                            Text("Yükselt 👑", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFF1A1000))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+
             item {
                 Row(
                     Modifier
