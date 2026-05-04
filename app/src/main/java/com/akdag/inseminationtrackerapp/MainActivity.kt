@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.credentials.CredentialManager
@@ -31,7 +32,6 @@ import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
 import com.akdag.inseminationtrackerapp.ui.theme.*
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseAuth
@@ -54,24 +54,48 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class AuthScreen { SPLASH, LOGIN, REGISTER }
+private enum class AuthScreen { SPLASH, LOGIN, REGISTER, VERIFY_EMAIL }
 
 @Composable
 private fun AuthFlow(onAuthSuccess: () -> Unit) {
     val auth = remember { FirebaseAuth.getInstance() }
     var screen by remember { mutableStateOf(AuthScreen.SPLASH) }
+    var pendingEmail by remember { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
         delay(1800)
-        if (auth.currentUser != null) onAuthSuccess()
-        else screen = AuthScreen.LOGIN
+        val user = auth.currentUser
+        when {
+            user == null -> screen = AuthScreen.LOGIN
+            user.isEmailVerified -> onAuthSuccess()
+            else -> {
+                // Kayıt olup uygulamayı kapatan kullanıcı — doğrulama ekranına gönder
+                pendingEmail = user.email ?: ""
+                screen = AuthScreen.VERIFY_EMAIL
+            }
+        }
     }
 
     Box(Modifier.fillMaxSize().background(Bg0)) {
         when (screen) {
             AuthScreen.SPLASH -> SplashContent()
-            AuthScreen.LOGIN -> LoginContent(auth, onAuthSuccess, onGoRegister = { screen = AuthScreen.REGISTER })
-            AuthScreen.REGISTER -> RegisterContent(auth, onBack = { screen = AuthScreen.LOGIN }, onSuccess = { screen = AuthScreen.LOGIN })
+            AuthScreen.LOGIN -> LoginContent(
+                auth = auth,
+                onSuccess = onAuthSuccess,
+                onGoRegister = { screen = AuthScreen.REGISTER },
+                onGoVerify = { email -> pendingEmail = email; screen = AuthScreen.VERIFY_EMAIL }
+            )
+            AuthScreen.REGISTER -> RegisterContent(
+                auth = auth,
+                onBack = { screen = AuthScreen.LOGIN },
+                onVerifyEmail = { email -> pendingEmail = email; screen = AuthScreen.VERIFY_EMAIL }
+            )
+            AuthScreen.VERIFY_EMAIL -> VerifyEmailContent(
+                auth = auth,
+                email = pendingEmail,
+                onVerified = onAuthSuccess,
+                onBack = { auth.signOut(); screen = AuthScreen.LOGIN }
+            )
         }
     }
 }
@@ -95,7 +119,12 @@ private fun SplashContent() {
 }
 
 @Composable
-private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister: () -> Unit) {
+private fun LoginContent(
+    auth: FirebaseAuth,
+    onSuccess: () -> Unit,
+    onGoRegister: () -> Unit,
+    onGoVerify: (String) -> Unit
+) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
@@ -188,7 +217,7 @@ private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister
         )
         if (error.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Text(error, color = RedAccent, fontSize = 12.sp)
+            Text(error, color = RedAccent, fontSize = 12.sp, textAlign = TextAlign.Center)
         }
         Spacer(Modifier.height(24.dp))
 
@@ -197,7 +226,18 @@ private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister
                 if (email.isBlank() || password.isBlank()) { error = "Tüm alanları doldurun."; return@Button }
                 loading = true; error = ""
                 auth.signInWithEmailAndPassword(email.trim(), password)
-                    .addOnSuccessListener { loading = false; onSuccess() }
+                    .addOnSuccessListener {
+                        val user = auth.currentUser
+                        when {
+                            user == null -> { loading = false; error = "Giriş başarısız." }
+                            !user.isEmailVerified -> {
+                                // Doğrulama ekranına yönlendir, oturumu kapatma
+                                loading = false
+                                onGoVerify(user.email ?: email.trim())
+                            }
+                            else -> { loading = false; onSuccess() }
+                        }
+                    }
                     .addOnFailureListener { loading = false; error = "E-posta veya şifre hatalı." }
             },
             enabled = !loading,
@@ -242,7 +282,11 @@ private fun LoginContent(auth: FirebaseAuth, onSuccess: () -> Unit, onGoRegister
 }
 
 @Composable
-private fun RegisterContent(auth: FirebaseAuth, onBack: () -> Unit, onSuccess: () -> Unit) {
+private fun RegisterContent(
+    auth: FirebaseAuth,
+    onBack: () -> Unit,
+    onVerifyEmail: (String) -> Unit
+) {
     val db = remember { FirebaseFirestore.getInstance() }
     var name by remember { mutableStateOf("") }
     var farm by remember { mutableStateOf("") }
@@ -276,10 +320,16 @@ private fun RegisterContent(auth: FirebaseAuth, onBack: () -> Unit, onSuccess: (
                     loading = true; error = ""
                     auth.createUserWithEmailAndPassword(email.trim(), password)
                         .addOnSuccessListener { result ->
-                            val uid = result.user?.uid ?: ""
+                            val user = result.user ?: run { loading = false; return@addOnSuccessListener }
+                            val uid = user.uid
                             db.collection("Users").document(uid).set(
                                 mapOf("uid" to uid, "name" to name, "farm_name" to farm.ifBlank { name }, "email" to email.trim())
-                            ).addOnCompleteListener { loading = false; onSuccess() }
+                            ).addOnCompleteListener {
+                                // Kullanıcıyı signed-in bırak — doğrulama ekranında reload() çalışsın diye
+                                user.sendEmailVerification()
+                                loading = false
+                                onVerifyEmail(email.trim())
+                            }
                         }
                         .addOnFailureListener { loading = false; error = it.localizedMessage ?: "Kayıt başarısız." }
                 },
@@ -288,6 +338,130 @@ private fun RegisterContent(auth: FirebaseAuth, onBack: () -> Unit, onSuccess: (
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary, contentColor = Bg0)
             ) { Text(if (loading) "Oluşturuluyor…" else "Hesap Oluştur", fontWeight = FontWeight.Bold, fontSize = 15.sp) }
+        }
+    }
+}
+
+@Composable
+private fun VerifyEmailContent(
+    auth: FirebaseAuth,
+    email: String,
+    onVerified: () -> Unit,
+    onBack: () -> Unit
+) {
+    var error by remember { mutableStateOf("") }
+    var loading by remember { mutableStateOf(false) }
+    var cooldown by remember { mutableStateOf(0) }
+
+    LaunchedEffect(cooldown) {
+        if (cooldown > 0) {
+            delay(1000)
+            cooldown--
+        }
+    }
+
+    fun checkVerification() {
+        val user = auth.currentUser ?: run { onBack(); return }
+        loading = true; error = ""
+        user.reload()
+            .addOnSuccessListener {
+                loading = false
+                if (auth.currentUser?.isEmailVerified == true) {
+                    onVerified()
+                } else {
+                    error = "E-posta henüz doğrulanmadı. Maildeki bağlantıya tıklayıp tekrar deneyin."
+                }
+            }
+            .addOnFailureListener {
+                loading = false
+                error = "Kontrol edilemedi. İnternet bağlantınızı kontrol edin."
+            }
+    }
+
+    fun resendVerificationEmail() {
+        val user = auth.currentUser ?: run { onBack(); return }
+        user.sendEmailVerification()
+            .addOnSuccessListener { cooldown = 60; error = "" }
+            .addOnFailureListener { error = "Mail gönderilemedi: ${it.localizedMessage}" }
+    }
+
+    Column(Modifier.fillMaxSize().background(Bg0)) {
+        AppTopBar("E-posta Doğrulama", onBack = onBack)
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(28.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                Modifier
+                    .size(88.dp)
+                    .background(GreenDim.copy(alpha = 0.25f), RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center
+            ) { Text("✉️", fontSize = 40.sp) }
+
+            Spacer(Modifier.height(28.dp))
+            Text("Mailinizi Doğrulayın", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Aşağıdaki adrese bir doğrulama bağlantısı gönderdik:",
+                fontSize = 14.sp, color = TextMid, textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                email,
+                fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = GreenPrimary,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "Maildeki bağlantıya tıkladıktan sonra aşağıdaki butona basın.",
+                fontSize = 13.sp, color = TextDim, textAlign = TextAlign.Center
+            )
+
+            if (error.isNotEmpty()) {
+                Spacer(Modifier.height(14.dp))
+                Text(error, color = RedAccent, fontSize = 12.sp, textAlign = TextAlign.Center)
+            }
+
+            Spacer(Modifier.height(36.dp))
+
+            Button(
+                onClick = { checkVerification() },
+                enabled = !loading,
+                modifier = Modifier.fillMaxWidth().height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = GreenPrimary, contentColor = Bg0)
+            ) {
+                Text(
+                    if (loading) "Kontrol ediliyor…" else "Doğruladım",
+                    fontWeight = FontWeight.Bold, fontSize = 15.sp
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+
+            OutlinedButton(
+                onClick = { resendVerificationEmail() },
+                enabled = cooldown == 0,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = ButtonDefaults.outlinedButtonBorder.copy(
+                    brush = androidx.compose.ui.graphics.SolidColor(
+                        if (cooldown == 0) GreenPrimary else BorderColor
+                    )
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = if (cooldown == 0) GreenPrimary else TextDim
+                )
+            ) {
+                Text(
+                    if (cooldown > 0) "Tekrar gönder (${cooldown}s)" else "Doğrulama Mailini Tekrar Gönder",
+                    fontSize = 14.sp
+                )
+            }
         }
     }
 }
