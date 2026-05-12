@@ -99,7 +99,7 @@ fun PremiumScreen(onClose: () -> Unit) {
                     ), contentAlignment = Alignment.Center
                 ) { Text("👑", fontSize = 38.sp) }
                 Spacer(Modifier.height(16.dp))
-                Text("İnek Takip Premium", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                Text("BesiLog Premium", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                 Spacer(Modifier.height(6.dp))
                 Text("Sürünüzü sınırsız yönetin", fontSize = 14.sp, color = TextMid)
             }

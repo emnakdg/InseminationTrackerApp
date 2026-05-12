@@ -19,6 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -104,14 +108,16 @@ private fun AuthFlow(onAuthSuccess: () -> Unit) {
 private fun SplashContent() {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Box(
-                Modifier
+            Icon(
+                painter = painterResource(id = R.drawable.ic_besilog),
+                contentDescription = "BesiLog",
+                tint = Color.Unspecified,
+                modifier = Modifier
                     .size(96.dp)
-                    .background(Brush.linearGradient(listOf(GreenDim, GreenPrimary)), RoundedCornerShape(28.dp)),
-                contentAlignment = Alignment.Center
-            ) { Text("🐄", fontSize = 44.sp) }
+                    .clip(RoundedCornerShape(28.dp))
+            )
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("İnek Takip", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                Text("BesiLog", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                 Text("Sürü yönetimi, kolaylaştı", fontSize = 14.sp, color = TextMid)
             }
         }
@@ -190,14 +196,16 @@ private fun LoginContent(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(
-            Modifier
+        Icon(
+            painter = painterResource(id = R.drawable.ic_besilog),
+            contentDescription = "BesiLog",
+            tint = Color.Unspecified,
+            modifier = Modifier
                 .size(72.dp)
-                .background(Brush.linearGradient(listOf(GreenDim, GreenPrimary)), RoundedCornerShape(20.dp)),
-            contentAlignment = Alignment.Center
-        ) { Text("🐄", fontSize = 34.sp) }
+                .clip(RoundedCornerShape(20.dp))
+        )
         Spacer(Modifier.height(16.dp))
-        Text("İnek Takip", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+        Text("BesiLog", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
         Text("Hesabına giriş yap", fontSize = 13.sp, color = TextMid)
         Spacer(Modifier.height(36.dp))
 

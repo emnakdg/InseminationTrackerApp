@@ -1011,7 +1011,7 @@ fun ProfileTab(userProfile: UserProfile, cows: List<CowData>, onLogout: () -> Un
                     contentAlignment = Alignment.Center
                 ) { Text("🐄", fontSize = 30.sp) }
                 Spacer(Modifier.height(16.dp))
-                Text("İnek Takip", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
+                Text("BesiLog", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary)
                 Text("v2.0.0", fontSize = 13.sp, color = TextDim, modifier = Modifier.padding(top = 4.dp))
                 Spacer(Modifier.height(12.dp))
                 Text(
