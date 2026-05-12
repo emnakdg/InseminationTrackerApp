@@ -207,18 +207,12 @@ fun DashboardTab(
                 .background(Bg1)
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Column {
-                    Text("Hoş geldin,", fontSize = 12.sp, color = TextMid)
-                    Text(
-                        userProfile.farmName.ifEmpty { userProfile.name.ifEmpty { "Çiftçi" } },
-                        fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary
-                    )
-                }
-                Box(
-                    Modifier.size(42.dp).background(Bg3, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) { Text("🐄", fontSize = 20.sp) }
+            Column {
+                Text("Hoş geldin,", fontSize = 12.sp, color = TextMid)
+                Text(
+                    userProfile.farmName.ifEmpty { userProfile.name.ifEmpty { "Çiftçi" } },
+                    fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = TextPrimary
+                )
             }
             Text(
                 formatDate(Date()),
@@ -517,9 +511,15 @@ fun CowCard(cow: CowData, onClick: () -> Unit) {
     val days = cow.dryingOffDate?.let { daysUntil(it.toDate()) }
     val urgent = days != null && days in 0..14
     val accentColor = when {
-        urgent       -> RedAccent
+        urgent         -> RedAccent
         cow.isPregnant -> GreenPrimary
-        else         -> androidx.compose.ui.graphics.Color.Transparent
+        else           -> androidx.compose.ui.graphics.Color.Transparent
+    }
+    val dotColor = when {
+        urgent                        -> RedAccent
+        cow.isPregnant                -> GreenPrimary
+        status == "Tohumlama Yapıldı" -> YellowAccent
+        else                          -> TextDim
     }
 
     Column(
@@ -535,61 +535,47 @@ fun CowCard(cow: CowData, onClick: () -> Unit) {
             .border(1.dp, if (urgent) RedAccent.copy(alpha = 0.4f) else BorderColor, RoundedCornerShape(16.dp))
             .clickable { onClick() }
     ) {
-        // Üst aksan şeridi
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(3.dp)
-                .background(accentColor)
-        )
+        Box(Modifier.fillMaxWidth().height(3.dp).background(accentColor))
 
         Column(Modifier.padding(12.dp)) {
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    Modifier
-                        .size(44.dp)
-                        .background(
-                            if (cow.isPregnant) StatusGebeBg else Bg3,
-                            RoundedCornerShape(13.dp)
-                        ),
-                    contentAlignment = Alignment.Center
-                ) { Text("🐄", fontSize = 22.sp) }
+                Text(
+                    cow.name,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
                 if (urgent) {
-                    Icon(Icons.Rounded.Warning, null, tint = RedAccent, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Warning, null, tint = RedAccent, modifier = Modifier.size(16.dp))
+                } else {
+                    Box(Modifier.size(10.dp).background(dotColor, CircleShape))
                 }
             }
 
-            Spacer(Modifier.height(10.dp))
-
-            Text(
-                cow.name,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
             Text(
                 "#${cow.earTag}",
                 fontSize = 11.sp,
                 color = TextDim,
-                modifier = Modifier.padding(top = 1.dp, bottom = 8.dp)
+                modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
             )
 
             StatusBadge(status)
 
             if (days != null && days >= 0) {
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         Icons.Rounded.Schedule,
                         null,
                         tint = if (urgent) RedAccent else TextMid,
-                        modifier = Modifier.size(12.dp)
+                        modifier = Modifier.size(11.dp)
                     )
                     Spacer(Modifier.width(3.dp))
                     Text(
@@ -608,6 +594,13 @@ fun CowCard(cow: CowData, onClick: () -> Unit) {
 fun CowListRow(cow: CowData, onClick: () -> Unit) {
     val status = cow.latestStatus() ?: ""
     val days = cow.dryingOffDate?.let { daysUntil(it.toDate()) }
+    val urgent = days != null && days in 0..14
+    val dotColor = when {
+        urgent                        -> RedAccent
+        cow.isPregnant                -> GreenPrimary
+        status == "Tohumlama Yapıldı" -> YellowAccent
+        else                          -> TextDim
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -617,10 +610,9 @@ fun CowListRow(cow: CowData, onClick: () -> Unit) {
     ) {
         Box(
             Modifier
-                .size(44.dp)
-                .background(if (cow.isPregnant) StatusGebeBg else Bg3, RoundedCornerShape(14.dp)),
-            contentAlignment = Alignment.Center
-        ) { Text("🐄", fontSize = 20.sp) }
+                .size(12.dp)
+                .background(dotColor, CircleShape)
+        )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(cow.name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 15.sp)
@@ -629,7 +621,11 @@ fun CowListRow(cow: CowData, onClick: () -> Unit) {
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             StatusBadge(status)
             if (days != null && days >= 0) {
-                Text("⏱ ${days}g", fontSize = 11.sp, color = if (days <= 14) RedAccent else TextDim)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Schedule, null, tint = if (urgent) RedAccent else TextDim, modifier = Modifier.size(11.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text("${days}g", fontSize = 11.sp, color = if (urgent) RedAccent else TextDim)
+                }
             }
         }
         Spacer(Modifier.width(8.dp))
